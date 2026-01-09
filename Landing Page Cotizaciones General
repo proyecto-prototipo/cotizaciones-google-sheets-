@@ -1,0 +1,54 @@
+/**
+ * ========= CONFIGURACIÓN FST NEGOCIOS =========
+ */
+const SHEET_NAME = "Hoja 1"; 
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyLG1GmmFIa8qqWIGEvD-4H8Qd32lZNW2KDLsMueHMvdYiMXY__Ty44m3-t0LIaurff/exec"; // RECUERDA: Pegar la URL del Deploy aquí
+
+function doGet(e) {
+  var idBusqueda = e.parameter.id;
+  var datos = obtenerDatosPorId(idBusqueda);
+  
+  if (!datos) return HtmlService.createHtmlOutput("<h1>Error: Cotización no encontrada</h1>");
+
+  var template = HtmlService.createTemplateFromFile('Cotizacion');
+  template.data = datos;
+
+  return template.evaluate()
+      .setTitle('FST Negocios - Propuesta para ' + datos.nombre_cliente)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function generarLinksWeb() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const row = sheet.getActiveCell().getRow();
+  
+  if (row < 2) return;
+
+  const id = sheet.getRange(row, 1).getValue(); // Col A
+  
+  // FECHA Y HORA AUTOMÁTICA
+  const ahora = Utilities.formatDate(new Date(), "GMT-5", "dd/MM/yyyy HH:mm:ss");
+  
+  const link = WEB_APP_URL + "?id=" + encodeURIComponent(id);
+  
+  // Mapeo según tus celdas (A=1 ... M=13)
+  sheet.getRange(row, 11).setValue(ahora); // Col K: fecha_generacion
+  sheet.getRange(row, 13).setValue(link);  // Col M: link_cotizacion
+  
+  SpreadsheetApp.getUi().alert("✅ Cotización Generada con fecha/hora actual.");
+}
+
+function obtenerDatosPorId(id) {
+  const values = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME).getDataRange().getValues();
+  const headers = values[0];
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) == String(id)) {
+      var obj = {};
+      headers.forEach((h, idx) => obj[h.trim()] = values[i][idx]);
+      return obj;
+    }
+  }
+  return null;
+}
