@@ -1,0 +1,55 @@
+/**
+ * ========= CONFIGURACIÓN FST NEGOCIOS =========
+ */
+const SHEET_NAME = "Hoja 1"; 
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzk5w7t3-nVxTathQWQWyciLeHrIbD_3OBFoJy9--93ZjMy4iLSXbQOVqfKYDXu39My/exec"; 
+
+function doGet(e) {
+  var idBusqueda = e.parameter.id;
+  var datos = obtenerDatosPorId(idBusqueda);
+  
+  if (!datos) return HtmlService.createHtmlOutput("<h1 style='text-align:center;'>Error: Cotización no encontrada</h1>");
+
+  // USAR createTemplateFromFile PARA QUE RECONOZCA EL CÓDIGO INTERNO
+  var template = HtmlService.createTemplateFromFile('Cotizacion');
+  template.data = datos;
+
+  // EL .evaluate() ES LO QUE HACE QUE EL CÓDIGO NO SE VEA COMO TEXTO
+  return template.evaluate()
+      .setTitle('FST Negocios - Tarifario para ' + datos.nombre_cliente)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+function generarLinksWeb() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_NAME);
+  const row = sheet.getActiveCell().getRow();
+  
+  if (row < 2) return;
+
+  const id = sheet.getRange(row, 1).getValue(); 
+  const ahora = Utilities.formatDate(new Date(), "GMT-5", "dd/MM/yyyy HH:mm:ss");
+  const link = WEB_APP_URL + "?id=" + encodeURIComponent(id);
+  
+  sheet.getRange(row, 24).setValue(ahora); // Columna X
+  sheet.getRange(row, 26).setValue(link);  // Columna Z
+  
+  SpreadsheetApp.getUi().alert("✅ Cotización Generada con éxito.");
+}
+
+function obtenerDatosPorId(id) {
+  const values = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_NAME).getDataRange().getDisplayValues();
+  const headers = values[0];
+  for (var i = 1; i < values.length; i++) {
+    if (String(values[i][0]) == String(id)) {
+      var obj = {};
+      headers.forEach((h, idx) => {
+        var key = h.trim().toLowerCase().replace(/\s+/g, '_');
+        obj[key] = values[i][idx];
+      });
+      return obj;
+    }
+  }
+  return null;
+}
